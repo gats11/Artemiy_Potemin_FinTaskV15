@@ -1,1 +1,202 @@
+import java.util.*;
 
+public class IndependentSetLocalSearch {
+
+    public static Set<Integer> localSearchIndependentSet(int[][] adjMatrix, int maxIter) {
+        int n = adjMatrix.length;
+        // Начальное случайное независимое множество
+        Set<Integer> currentSet = new HashSet<>();
+        Random rand = new Random();
+        for (int i = 0; i < n; i++) {
+            if (rand.nextBoolean()) {
+                currentSet.add(i);
+            }
+        }
+
+        // Убедимся, что множество независимое (удаляем смежные вершины)
+        Iterator<Integer> it = currentSet.iterator();
+        while (it.hasNext()) {
+            int u = it.next();
+            for (int v = 0; v < n; v++) {
+                if (adjMatrix[u][v] == 1 && currentSet.contains(v)) {
+                    it.remove();
+                    break;
+                }
+            }
+        }
+
+        // Локальный поиск: пытаемся добавлять вершины
+        for (int iter = 0; iter < maxIter; iter++) {
+            // Список кандидатов для добавления
+            List<Integer> candidates = new ArrayList<>();
+            for (int v = 0; v < n; v++) {
+                if (!currentSet.contains(v)) {
+                    boolean canAdd = true;
+                    for (int neighbor = 0; neighbor < n; neighbor++) {
+                        if (adjMatrix[v][neighbor] == 1 && currentSet.contains(neighbor)) {
+                            canAdd = false;
+                            break;
+                        }
+                    }
+                    if (canAdd) {
+                        candidates.add(v);
+                    }
+                }
+            }
+            if (candidates.isEmpty()) break;
+            // Добавляем случайную вершину
+            int newVertex = candidates.get(rand.nextInt(candidates.size()));
+            currentSet.add(newVertex);
+        }
+
+        return currentSet;
+    }
+
+    public static boolean isIndependentSet(int[][] adjMatrix, Set<Integer> set) {
+        for (int u : set) {
+            for (int v : set) {
+                if (u != v && adjMatrix[u][v] == 1) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        
+        System.out.println("=== Поиск независимого множества ===");
+        System.out.println("Выберите способ ввода графа:");
+        System.out.println("1 - Ввести количество вершин и рёбра вручную");
+        System.out.println("2 - Использовать готовый пример");
+        System.out.print("Ваш выбор: ");
+        
+        int choice = scanner.nextInt();
+        int[][] adjMatrix;
+        
+        if (choice == 1) {
+            // Ручной ввод
+            System.out.print("Введите количество вершин: ");
+            int n = scanner.nextInt();
+            adjMatrix = new int[n][n];
+            
+            System.out.print("Введите количество рёбер: ");
+            int m = scanner.nextInt();
+            
+            System.out.println("Введите рёбра в формате 'u v' (вершины нумеруются с 0):");
+            for (int i = 0; i < m; i++) {
+                int u = scanner.nextInt();
+                int v = scanner.nextInt();
+                if (u >= 0 && u < n && v >= 0 && v < n) {
+                    adjMatrix[u][v] = 1;
+                    adjMatrix[v][u] = 1;
+                } else {
+                    System.out.println("Ошибка: вершины должны быть в диапазоне [0, " + (n-1) + "]");
+                    i--; // Повторить ввод
+                }
+            }
+        } else {
+            // Готовый пример
+            System.out.println("\nВыберите пример графа:");
+            System.out.println("1 - Линейный граф (цепочка)");
+            System.out.println("2 - Граф-звезда");
+            System.out.println("3 - Полный граф");
+            System.out.println("4 - Граф с изолированными вершинами");
+            System.out.print("Ваш выбор: ");
+            
+            int exampleChoice = scanner.nextInt();
+            adjMatrix = createExampleGraph(exampleChoice);
+        }
+        
+        // Вывод матрицы смежности
+        System.out.println("\nМатрица смежности:");
+        printAdjMatrix(adjMatrix);
+        
+        // Выполнение алгоритма
+        System.out.print("\nВведите максимальное количество итераций (по умолчанию 1000): ");
+        int maxIter = scanner.hasNextInt() ? scanner.nextInt() : 1000;
+        
+        Set<Integer> independentSet = localSearchIndependentSet(adjMatrix, maxIter);
+        
+        // Вывод результатов
+        System.out.println("\n=== РЕЗУЛЬТАТЫ ===");
+        System.out.println("Найденное независимое множество: " + independentSet);
+        System.out.println("Размер: " + independentSet.size());
+        
+        // Проверка корректности
+        if (isIndependentSet(adjMatrix, independentSet)) {
+            System.out.println("✓ Корректное независимое множество");
+        } else {
+            System.out.println("✗ Некорректное множество!");
+        }
+        
+        scanner.close();
+    }
+    
+    public static int[][] createExampleGraph(int choice) {
+        switch (choice) {
+            case 1:
+                // Линейный граф (цепочка из 6 вершин)
+                System.out.println("Создан линейный граф: 0-1-2-3-4-5");
+                int n = 6;
+                int[][] linear = new int[n][n];
+                for (int i = 0; i < n-1; i++) {
+                    linear[i][i+1] = 1;
+                    linear[i+1][i] = 1;
+                }
+                return linear;
+                
+            case 2:
+                // Граф-звезда (центр 0, лучи 1,2,3,4)
+                System.out.println("Создан граф-звезда: центр 0, лучи 1,2,3,4");
+                int[][] star = new int[5][5];
+                for (int i = 1; i < 5; i++) {
+                    star[0][i] = 1;
+                    star[i][0] = 1;
+                }
+                return star;
+                
+            case 3:
+                // Полный граф K₄
+                System.out.println("Создан полный граф K₄ (4 вершины)");
+                int[][] complete = new int[4][4];
+                for (int i = 0; i < 4; i++) {
+                    for (int j = i+1; j < 4; j++) {
+                        complete[i][j] = 1;
+                        complete[j][i] = 1;
+                    }
+                }
+                return complete;
+                
+            case 4:
+                // Граф с изолированными вершинами и одним ребром
+                System.out.println("Создан граф: 0-1, вершины 2,3,4 изолированы");
+                int[][] isolated = new int[5][5];
+                isolated[0][1] = 1;
+                isolated[1][0] = 1;
+                return isolated;
+                
+            default:
+                System.out.println("Неверный выбор, создан линейный граф по умолчанию");
+                return createExampleGraph(1);
+        }
+    }
+    
+    public static void printAdjMatrix(int[][] adjMatrix) {
+        int n = adjMatrix.length;
+        System.out.print("   ");
+        for (int i = 0; i < n; i++) {
+            System.out.print(i + " ");
+        }
+        System.out.println();
+        
+        for (int i = 0; i < n; i++) {
+            System.out.print(i + "  ");
+            for (int j = 0; j < n; j++) {
+                System.out.print(adjMatrix[i][j] + " ");
+            }
+            System.out.println();
+        }
+    }
+}
